@@ -60,11 +60,37 @@ server <- function(input, output, session) {
       )
   })
   
+  # output the count of permits in the date range (number of rows of filtered df)
   output$permits_to_date <- renderText({
     format(nrow(filtered_df()), big.mark = ",")
   })
+  
+  # output the avg number of days it takes for a permit to get approved (avg processing time from application date to issue date)
+  output$avg_days <- renderText({
+    df <- filtered_df()
+    days_taken <- as.numeric(df[[ISSUE_DATE]] - df[[APPLIED_DATE]])
+    days_taken <- days_taken[!is.na(days_taken)]
+    
+    if (length(days_taken) == 0) {
+      return("0 Days")
+    }
+    
+    paste0(round(mean(days_taken), 1), " Days")
+  })
+  
+  # render the permit volume trend plot by month
+  output$permit_volume_trend <- renderPlot({
+    df <- filtered_df()
+    
+    monthly_counts <- df |> 
+      mutate(month = floor_date(.data[[ISSUE_DATE]], "month")) |>
+      count(month)
+    
+    ggplot(monthly_counts, aes(x = month, y = n)) + 
+      geom_line(linewidth = 1) + 
+      labs(x = "Month", y = "Permit Count")
+  })
 }
-
 
 shinyApp(ui = ui, server = server)
 
